@@ -7,24 +7,8 @@ use PHPUnit\Framework\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
-    /** @var string[] Cookie files to clean up after each test */
-    private array $cookieFiles = [];
-
-    protected function tearDown(): void
-    {
-        foreach ($this->cookieFiles as $file) {
-            if (file_exists($file)) {
-                @unlink($file);
-            }
-        }
-        $this->cookieFiles = [];
-        parent::tearDown();
-    }
-
     /**
      * Make an HTTP request to the running application.
-     * With host networking, the app listens on 127.0.0.1:8080 both
-     * from inside the container and from the host.
      */
     protected function httpRequest(string $method, string $path, array $data = [], array $headers = []): array
     {
@@ -58,16 +42,17 @@ abstract class TestCase extends BaseTestCase
     /**
      * Log in as a seeded user and return session credentials.
      *
+     * Captures the session cookie directly from the Set-Cookie header
+     * instead of relying on curl cookie jar files.
+     *
      * @param string $username One of: admin, editor, reviewer, analyst, finance, auditor
-     * @return array{cookie_file: string, csrf_token: string, user: array}
+     * @return array{cookie_file: string, cookie: string, csrf_token: string, user: array}
      */
     protected function loginAs(string $username): array
     {
         $password = bootstrap_config('seed_admin_password', '');
 
-        $cookieFile = tempnam(sys_get_temp_dir(), 'test_cookie_');
-        $this->cookieFiles[] = $cookieFile;
-
+        $responseHeaders = '';
         $ch = curl_init('http://127.0.0.1:8080/api/v1/auth/login');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
@@ -80,54 +65,37 @@ abstract class TestCase extends BaseTestCase
             'Content-Type: application/json',
             'Accept: application/json',
         ]);
-        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
+        // Capture response headers to extract Set-Cookie
+        curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($ch, $header) use (&$responseHeaders) {
+            $responseHeaders .= $header;
+            return strlen($header);
+        });
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
+        // Extract session cookie from Set-Cookie header
+        $cookie = '';
+        if (preg_match('/Set-Cookie:\s*([^;]+)/i', $responseHeaders, $m)) {
+            $cookie = $m[1]; // e.g. "PHPSESSID=abc123"
+        }
+
         $body = json_decode($response ?: '', true) ?? [];
 
-        $session = [
-            'cookie_file' => $cookieFile,
+        return [
+            'cookie_file' => '', // kept for backward compat with doUpload methods
+            'cookie'      => $cookie,
             'csrf_token'  => $body['data']['csrf_token'] ?? '',
             'user'        => $body['data']['user'] ?? [],
             'status'      => $httpCode,
         ];
-
-        // Verify the session is persisted before returning.
-        // On some Docker/overlay2 environments, the session file may not be
-        // immediately visible to the next PHP-FPM worker. Retry until confirmed.
-        if ($httpCode === 200 && !empty($session['csrf_token'])) {
-            for ($i = 0; $i < 5; $i++) {
-                $verifyCh = curl_init('http://127.0.0.1:8080/api/v1/auth/me');
-                curl_setopt($verifyCh, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($verifyCh, CURLOPT_TIMEOUT, 5);
-                curl_setopt($verifyCh, CURLOPT_COOKIEFILE, $cookieFile);
-                curl_setopt($verifyCh, CURLOPT_COOKIEJAR, $cookieFile);
-                curl_setopt($verifyCh, CURLOPT_HTTPHEADER, ['Accept: application/json']);
-                $verifyResponse = curl_exec($verifyCh);
-                $verifyCode = curl_getinfo($verifyCh, CURLINFO_HTTP_CODE);
-                curl_close($verifyCh);
-                if ($verifyCode === 200) {
-                    break;
-                }
-                usleep(200000); // 200ms
-            }
-        }
-
-        return $session;
     }
 
     /**
      * Make an authenticated HTTP request using session credentials from loginAs().
      *
-     * @param string $method  HTTP method (GET, POST, PUT, PATCH, DELETE)
-     * @param string $path    URL path (e.g. /api/v1/recipes)
-     * @param array  $session Session credentials from loginAs()
-     * @param array  $data    Request body data (for POST/PUT/PATCH)
-     * @return array{status: int, body: array, raw: string}
+     * Sends the session cookie directly as a header instead of using cookie jar files.
      */
     protected function authenticatedRequest(string $method, string $path, array $session, array $data = []): array
     {
@@ -137,10 +105,11 @@ abstract class TestCase extends BaseTestCase
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, strtoupper($method));
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $session['cookie_file']);
-        curl_setopt($ch, CURLOPT_COOKIEJAR, $session['cookie_file']);
 
         $headers = ['Content-Type: application/json', 'Accept: application/json'];
+        if (!empty($session['cookie'])) {
+            $headers[] = 'Cookie: ' . $session['cookie'];
+        }
         if (!empty($session['csrf_token'])) {
             $headers[] = 'X-CSRF-Token: ' . $session['csrf_token'];
         }

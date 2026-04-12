@@ -103,9 +103,10 @@ class UploadPersistenceTest extends TestCase
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $this->editorSession['cookie_file']);
-        curl_setopt($ch, CURLOPT_COOKIEJAR, $this->editorSession['cookie_file']);
         $headers = ['Accept: application/json'];
+        if (!empty($this->editorSession['cookie'])) {
+            $headers[] = 'Cookie: ' . $this->editorSession['cookie'];
+        }
         if (!empty($this->editorSession['csrf_token'])) {
             $headers[] = 'X-CSRF-Token: ' . $this->editorSession['csrf_token'];
         }

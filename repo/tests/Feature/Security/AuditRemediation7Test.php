@@ -233,9 +233,8 @@ class AuditRemediation7Test extends TestCase
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $session['cookie_file']);
-        curl_setopt($ch, CURLOPT_COOKIEJAR, $session['cookie_file']);
         $headers = ['Accept: application/json'];
+        if (!empty($session['cookie'])) $headers[] = 'Cookie: ' . $session['cookie'];
         if (!empty($session['csrf_token'])) $headers[] = 'X-CSRF-Token: ' . $session['csrf_token'];
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_POSTFIELDS, [
