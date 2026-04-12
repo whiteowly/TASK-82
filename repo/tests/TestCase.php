@@ -89,12 +89,35 @@ abstract class TestCase extends BaseTestCase
 
         $body = json_decode($response ?: '', true) ?? [];
 
-        return [
+        $session = [
             'cookie_file' => $cookieFile,
             'csrf_token'  => $body['data']['csrf_token'] ?? '',
             'user'        => $body['data']['user'] ?? [],
             'status'      => $httpCode,
         ];
+
+        // Verify the session is persisted before returning.
+        // On some Docker/overlay2 environments, the session file may not be
+        // immediately visible to the next PHP-FPM worker. Retry until confirmed.
+        if ($httpCode === 200 && !empty($session['csrf_token'])) {
+            for ($i = 0; $i < 5; $i++) {
+                $verifyCh = curl_init('http://127.0.0.1:8080/api/v1/auth/me');
+                curl_setopt($verifyCh, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($verifyCh, CURLOPT_TIMEOUT, 5);
+                curl_setopt($verifyCh, CURLOPT_COOKIEFILE, $cookieFile);
+                curl_setopt($verifyCh, CURLOPT_COOKIEJAR, $cookieFile);
+                curl_setopt($verifyCh, CURLOPT_HTTPHEADER, ['Accept: application/json']);
+                $verifyResponse = curl_exec($verifyCh);
+                $verifyCode = curl_getinfo($verifyCh, CURLINFO_HTTP_CODE);
+                curl_close($verifyCh);
+                if ($verifyCode === 200) {
+                    break;
+                }
+                usleep(200000); // 200ms
+            }
+        }
+
+        return $session;
     }
 
     /**
