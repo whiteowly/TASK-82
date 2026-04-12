@@ -9,7 +9,7 @@ services:
   mysql:
     image: mysql:8.0
     network_mode: host
-    command: --bind-address=127.0.0.1 --port=3307
+    command: --bind-address=127.0.0.1 --port=3307 --log-bin-trust-function-creators=1
     depends_on:
       bootstrap:
         condition: service_completed_successfully
