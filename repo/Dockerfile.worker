@@ -1,0 +1,31 @@
+##
+## Stage 1: Composer install
+##
+FROM composer:2 AS composer
+WORKDIR /app
+COPY composer.json /app/
+RUN composer install --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs 2>/dev/null || \
+    composer install --no-dev --no-scripts --ignore-platform-reqs
+
+##
+## Stage 2: Worker runtime (PHP CLI)
+##
+FROM php:8.1-cli-alpine
+
+RUN apk add --no-cache bash curl openssl \
+    && docker-php-ext-install pdo_mysql bcmath opcache \
+    && apk add --no-cache freetype-dev libjpeg-turbo-dev libpng-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install gd \
+    && mkdir -p /app/runtime/bootstrap /app/storage/uploads /app/storage/reports /app/storage/logs
+
+WORKDIR /app
+
+COPY --from=composer /app/vendor /app/vendor
+COPY . /app
+
+RUN mkdir -p /app/runtime/cache /app/runtime/log /app/runtime/session /app/runtime/temp \
+    && chown -R www-data:www-data /app/runtime /app/storage \
+    && chmod +x /app/docker/worker-entrypoint.sh
+
+ENTRYPOINT ["/app/docker/worker-entrypoint.sh"]

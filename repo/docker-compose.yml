@@ -1,0 +1,68 @@
+services:
+  bootstrap:
+    image: alpine:3.19
+    command: /bin/sh /scripts/dev-bootstrap.sh
+    volumes:
+      - ./docker:/scripts:ro
+      - bootstrap_data:/bootstrap
+
+  mysql:
+    image: mysql:8.0
+    network_mode: host
+    command: --bind-address=127.0.0.1 --port=3307
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /bootstrap/db_root_password
+    volumes:
+      - bootstrap_data:/bootstrap:ro
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--port=3307"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    network_mode: host
+    depends_on:
+      mysql:
+        condition: service_healthy
+      bootstrap:
+        condition: service_completed_successfully
+    volumes:
+      - bootstrap_data:/app/runtime/bootstrap:ro
+      - upload_data:/app/storage/uploads
+      - report_data:/app/storage/reports
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    network_mode: host
+    depends_on:
+      mysql:
+        condition: service_healthy
+      bootstrap:
+        condition: service_completed_successfully
+    volumes:
+      - bootstrap_data:/app/runtime/bootstrap:ro
+      - upload_data:/app/storage/uploads
+      - report_data:/app/storage/reports
+
+volumes:
+  bootstrap_data:
+  mysql_data:
+  upload_data:
+  report_data:

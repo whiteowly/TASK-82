@@ -1,0 +1,121 @@
+/* SiteOps - Application styles */
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #f2f2f2;
+}
+
+/* Login page */
+.login-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background-color: #f2f2f2;
+}
+
+.login-container {
+    width: 380px;
+    padding: 30px;
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
+}
+
+.login-title {
+    text-align: center;
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 25px;
+    color: #333;
+}
+
+/* Sidebar active state */
+.layui-side .layui-nav .layui-nav-item a.active,
+.layui-side .layui-nav .layui-nav-item dd a.active {
+    background-color: #009688;
+    color: #fff;
+}
+
+/* Main content area */
+.site-content {
+    padding: 20px;
+}
+
+/* Breadcrumb spacing */
+.layui-breadcrumb {
+    margin-bottom: 15px;
+}
+
+/* Scaffold notice */
+.scaffold-notice {
+    background-color: #fffbe6;
+    border: 1px solid #ffe58f;
+    border-radius: 4px;
+    padding: 15px 20px;
+    margin: 20px 0;
+    color: #665500;
+    line-height: 1.6;
+}
+
+.scaffold-notice .layui-icon {
+    margin-right: 6px;
+    color: #faad14;
+}
+
+/* Form spacing */
+.layui-form-item {
+    margin-bottom: 15px;
+}
+
+/* Card spacing */
+.layui-card {
+    margin-bottom: 15px;
+}
+
+/* Error pages */
+.error-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background-color: #f2f2f2;
+}
+
+.error-container {
+    text-align: center;
+}
+
+.error-container h1 {
+    font-size: 96px;
+    font-weight: 700;
+    color: #999;
+    margin-bottom: 10px;
+}
+
+.error-container p {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 25px;
+}
+
+/* Tab content spacing */
+.layui-tab-content {
+    min-height: 200px;
+}
+
+/* Analytics filter area */
+.analytics-filters {
+    background: #fff;
+    padding: 15px;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* Audit filter area */
+.audit-filters {
+    background: #fff;
+    padding: 15px;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}

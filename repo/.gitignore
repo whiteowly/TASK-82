@@ -1,0 +1,49 @@
+# Dependencies
+/vendor/
+
+# Runtime artifacts
+/runtime/
+*.log
+
+# Storage (managed by Docker volumes)
+/storage/uploads/*
+/storage/reports/*
+/storage/logs/*
+!storage/uploads/.gitkeep
+!storage/reports/.gitkeep
+!storage/logs/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment files — NEVER check these in
+.env
+.env.*
+*.env
+
+# Composer
+composer.phar
+
+# PHPUnit
+.phpunit.result.cache
+.phpunit.cache/
+
+# Node (build artifacts only)
+node_modules/
+
+# Docker runtime
+docker-compose.override.yml
+
+# Playwright
+tests/Playwright/artifacts/
+tests/Playwright/report/
+test-results/
+package-lock.json

@@ -1,0 +1,18 @@
+{
+  "name": "repo",
+  "version": "1.0.0",
+  "description": "A fully offline, local-network multi-site management system built with ThinkPHP 6 + Layui. Designed for community commerce organizations that need recipe content workflow, operations analytics, multi-dimensional reporting, finance settlement management, RBAC, encrypted sensitive data handling, and immutable audit logging.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1"
+  }
+}

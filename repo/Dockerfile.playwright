@@ -1,0 +1,12 @@
+FROM mcr.microsoft.com/playwright:v1.52.0-noble
+
+WORKDIR /tests
+
+COPY package.json ./
+RUN npm install
+
+COPY playwright.config.ts ./
+COPY tests/Playwright/ ./tests/Playwright/
+
+# Run tests
+CMD ["npx", "playwright", "test", "--reporter=list"]

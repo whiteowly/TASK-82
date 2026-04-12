@@ -1,0 +1,15 @@
+.git
+.gitignore
+runtime/
+storage/uploads/*
+storage/reports/*
+storage/logs/*
+vendor/
+node_modules/
+docker-compose.yml
+docker-compose.override.yml
+.env*
+.idea/
+.vscode/
+AGENTS.md
+prompt1.md
