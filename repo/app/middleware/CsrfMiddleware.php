@@ -40,10 +40,14 @@ class CsrfMiddleware
             }
         }
 
-        $token = $request->header('X-CSRF-Token', '');
+        // If no authenticated session exists, skip CSRF — AuthMiddleware will reject
         $sessionToken = session('csrf_token');
+        if (empty($sessionToken)) {
+            return $next($request);
+        }
 
-        if (empty($token) || empty($sessionToken) || !hash_equals($sessionToken, $token)) {
+        $token = $request->header('X-CSRF-Token', '');
+        if (empty($token) || !hash_equals($sessionToken, $token)) {
             throw new HttpException(403, 'CSRF token validation failed');
         }
 

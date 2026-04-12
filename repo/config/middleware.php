@@ -12,8 +12,8 @@ return [
     // Priority (higher = runs first)
     'priority' => [
         \app\middleware\RequestIdMiddleware::class,
-        \app\middleware\CsrfMiddleware::class,
         \app\middleware\AuthMiddleware::class,
+        \app\middleware\CsrfMiddleware::class,
         \app\middleware\SiteScopeMiddleware::class,
         \app\middleware\RbacMiddleware::class,
     ],

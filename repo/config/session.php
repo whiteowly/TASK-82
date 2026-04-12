@@ -10,5 +10,5 @@ return [
     'serialize'      => ['serialize', 'unserialize'],
     'httponly'        => true,
     'secure'         => false,
-    'same_site'      => 'Strict',
+    'same_site'      => 'Lax',
 ];
