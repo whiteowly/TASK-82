@@ -11,9 +11,11 @@
 # Usage: ./run_tests.sh
 ##############################################################################
 
-set -e
+set -eo pipefail
 
 APP_URL="http://127.0.0.1:8080"
+PHPUNIT_TIMEOUT=600    # 10 minutes max for PHPUnit
+PLAYWRIGHT_TIMEOUT=600 # 10 minutes max for Playwright
 SUITE_START=$(date +%s)
 
 # Helper: print a step header with timestamp
@@ -43,7 +45,7 @@ FAILED=0
 
 # Step 1: Ensure the stack is built and running
 step_start 1 "Building and starting Docker stack"
-docker compose up -d --build 2>&1 | tail -5
+docker compose up -d --build 2>&1
 step_done "Docker stack ready"
 
 # Step 2: Wait for services to be healthy
@@ -91,7 +93,7 @@ fi
 
 # Step 3: DB initialization via centralized path
 step_start 3 "Running database init"
-docker compose exec -T web bash /app/docker/init-db-internal.sh 2>&1 | tail -5 || {
+docker compose exec -T web bash /app/docker/init-db-internal.sh 2>&1 || {
     echo "  Note: DB init returned non-zero."
 }
 step_done "Database initialized"
@@ -108,15 +110,20 @@ else
 fi
 
 # Step 5: Run PHPUnit tests inside Docker
-step_start 5 "Running PHPUnit tests"
-docker compose exec -T web php /app/vendor/bin/phpunit \
+step_start 5 "Running PHPUnit tests (timeout: ${PHPUNIT_TIMEOUT}s)"
+PHPUNIT_RC=0
+timeout "$PHPUNIT_TIMEOUT" \
+    docker compose exec -T web php /app/vendor/bin/phpunit \
     --configuration /app/phpunit.xml \
     --colors=always \
-    2>&1 || {
-    step_fail "PHPUnit tests failed"
+    2>&1 || PHPUNIT_RC=$?
+if [ $PHPUNIT_RC -eq 124 ]; then
+    step_fail "PHPUnit timed out after ${PHPUNIT_TIMEOUT}s"
     FAILED=1
-}
-if [ $FAILED -eq 0 ]; then
+elif [ $PHPUNIT_RC -ne 0 ]; then
+    step_fail "PHPUnit tests failed (exit $PHPUNIT_RC)"
+    FAILED=1
+else
     step_done "PHPUnit tests passed"
 fi
 
@@ -194,21 +201,25 @@ echo "$ADMIN_PASS_PW" > /tmp/siteops_test_password
 
 PW_EXIT=1
 if command -v npx >/dev/null 2>&1 && [ -d node_modules/@playwright ]; then
-    npx playwright test --reporter=list 2>&1
-    PW_EXIT=$?
+    PW_EXIT=0
+    timeout "$PLAYWRIGHT_TIMEOUT" npx playwright test --reporter=list 2>&1 || PW_EXIT=$?
 elif [ -f Dockerfile.playwright ]; then
     echo "  Building Playwright Docker image..."
-    docker build -f Dockerfile.playwright -t siteops-playwright . 2>&1 | tail -3
-    echo "  Running Playwright tests..."
-    docker run --rm --network host \
+    docker build -f Dockerfile.playwright -t siteops-playwright . 2>&1
+    echo "  Running Playwright tests (timeout: ${PLAYWRIGHT_TIMEOUT}s)..."
+    PW_EXIT=0
+    timeout "$PLAYWRIGHT_TIMEOUT" \
+        docker run --rm --network host \
         -v "$(pwd)/tests/Playwright/artifacts:/tests/tests/Playwright/artifacts" \
         siteops-playwright \
-        sh -c "echo '$ADMIN_PASS_PW' > /tmp/siteops_test_password && npx playwright test --reporter=list" 2>&1
-    PW_EXIT=$?
+        sh -c "echo '$ADMIN_PASS_PW' > /tmp/siteops_test_password && npx playwright test --reporter=list" 2>&1 || PW_EXIT=$?
 fi
 
-if [ $PW_EXIT -ne 0 ]; then
-    step_fail "Playwright browser E2E tests failed or unavailable"
+if [ "$PW_EXIT" -eq 124 ]; then
+    step_fail "Playwright timed out after ${PLAYWRIGHT_TIMEOUT}s"
+    FAILED=1
+elif [ "$PW_EXIT" -ne 0 ]; then
+    step_fail "Playwright browser E2E tests failed or unavailable (exit $PW_EXIT)"
     FAILED=1
 else
     step_done "Playwright browser E2E tests passed"
