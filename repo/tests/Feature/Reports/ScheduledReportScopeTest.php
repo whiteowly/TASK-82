@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace tests\Feature\Reports;
 
 use tests\TestCase;
+use think\facade\Db;
 
 /**
  * Tests that scheduled and interactive report runs enforce site-scope
@@ -271,39 +272,26 @@ class ScheduledReportScopeTest extends TestCase
 
         // --- 2. Insert a report definition owned by that user ---------
         $defName = 'sched_scope_test_' . uniqid();
-        $insertDef = "cd /app && php -r \""
-            . "require 'vendor/autoload.php'; "
-            . "(new think\\\\App())->initialize(); "
-            . "\\$id = think\\\\facade\\\\Db::name('report_definitions')->insertGetId(["
-            .   "'name'=>'{$defName}',"
-            .   "'description'=>'scope test',"
-            .   "'dimensions_json'=>'{\\\"type\\\":\\\"participation\\\"}',"
-            .   "'created_by'=>{$userId},"
-            .   "'created_at'=>date('Y-m-d H:i:s'),"
-            .   "'updated_at'=>date('Y-m-d H:i:s')"
-            . "]); "
-            . "echo \\$id;"
-            . "\"";
-        exec($insertDef . ' 2>&1', $defOut, $defExit);
-        $this->assertEquals(0, $defExit, 'Insert definition failed: ' . implode("\n", $defOut));
-        $defId = (int) trim(end($defOut));
+        $now = date('Y-m-d H:i:s');
+        $defId = (int) Db::name('report_definitions')->insertGetId([
+            'name'            => $defName,
+            'description'     => 'scope test',
+            'dimensions_json' => json_encode(['type' => 'participation']),
+            'created_by'      => $userId,
+            'created_at'      => $now,
+            'updated_at'      => $now,
+        ]);
         $this->assertGreaterThan(0, $defId, 'Definition ID must be positive');
 
         // --- 3. Insert a schedule row due now -------------------------
-        $insertSched = "cd /app && php -r \""
-            . "require 'vendor/autoload.php'; "
-            . "(new think\\\\App())->initialize(); "
-            . "think\\\\facade\\\\Db::name('report_schedules')->insert(["
-            .   "'definition_id'=>{$defId},"
-            .   "'cadence'=>'daily',"
-            .   "'next_run_at'=>date('Y-m-d H:i:s', strtotime('-1 minute')),"
-            .   "'active'=>1,"
-            .   "'created_at'=>date('Y-m-d H:i:s'),"
-            .   "'updated_at'=>date('Y-m-d H:i:s')"
-            . "]);"
-            . "\"";
-        exec($insertSched . ' 2>&1', $schedOut, $schedExit);
-        $this->assertEquals(0, $schedExit, 'Insert schedule failed: ' . implode("\n", $schedOut));
+        Db::name('report_schedules')->insert([
+            'definition_id' => $defId,
+            'cadence'       => 'daily',
+            'next_run_at'   => date('Y-m-d H:i:s', strtotime('-1 minute')),
+            'active'        => 1,
+            'created_at'    => $now,
+            'updated_at'    => $now,
+        ]);
 
         // --- 4. Run the scheduler -------------------------------------
         exec('cd /app && php think reports:scheduled 2>&1', $cmdOut, $cmdExit);
@@ -311,17 +299,10 @@ class ScheduledReportScopeTest extends TestCase
         $this->assertEquals(0, $cmdExit, 'Scheduler command must exit 0. Output: ' . $cmdText);
 
         // --- 5. Query the run row and artifact row --------------------
-        $queryRun = "cd /app && php -r \""
-            . "require 'vendor/autoload.php'; "
-            . "(new think\\\\App())->initialize(); "
-            . "\\$run = think\\\\facade\\\\Db::name('report_runs')"
-            .   "->where('definition_id', {$defId})"
-            .   "->order('id', 'desc')->find(); "
-            . "echo json_encode(\\$run);"
-            . "\"";
-        exec($queryRun . ' 2>&1', $runOut, $runExit);
-        $this->assertEquals(0, $runExit, 'Query run failed: ' . implode("\n", $runOut));
-        $runRow = json_decode(trim(end($runOut)), true);
+        $runRow = Db::name('report_runs')
+            ->where('definition_id', $defId)
+            ->order('id', 'desc')
+            ->find();
 
         $this->assertNotEmpty($runRow, 'A report_runs row must exist for the definition');
         $runId = (int) $runRow['id'];
@@ -335,16 +316,9 @@ class ScheduledReportScopeTest extends TestCase
             'Failed run must not have an artifact_path. Got: ' . ($runRow['artifact_path'] ?? ''));
 
         // Assert: no report_artifacts row
-        $queryArtifact = "cd /app && php -r \""
-            . "require 'vendor/autoload.php'; "
-            . "(new think\\\\App())->initialize(); "
-            . "\\$count = think\\\\facade\\\\Db::name('report_artifacts')"
-            .   "->where('run_id', {$runId})->count(); "
-            . "echo \\$count;"
-            . "\"";
-        exec($queryArtifact . ' 2>&1', $artOut, $artExit);
-        $this->assertEquals(0, $artExit, 'Query artifacts failed: ' . implode("\n", $artOut));
-        $artifactCount = (int) trim(end($artOut));
+        $artifactCount = (int) Db::name('report_artifacts')
+            ->where('run_id', $runId)
+            ->count();
         $this->assertEquals(0, $artifactCount,
             'No report_artifacts row must exist for a failed empty-scope run');
     }

@@ -19,12 +19,12 @@ Route::group('api/v1', function () {
     Route::get('rbac/permissions', 'api.v1.Admin/permissions')
         ->middleware(\app\middleware\RbacMiddleware::class, 'administrator');
 
-    // Admin user management
+    // Admin user management (specific routes before generic to avoid prefix matching)
     Route::group('admin', function () {
-        Route::post('users', 'api.v1.Admin/createUser');
-        Route::patch('users/:id', 'api.v1.Admin/updateUser');
         Route::post('users/:id/roles', 'api.v1.Admin/assignRoles');
         Route::post('users/:id/site-scopes', 'api.v1.Admin/assignSiteScopes');
+        Route::post('users', 'api.v1.Admin/createUser');
+        Route::patch('users/:id', 'api.v1.Admin/updateUser');
     })->middleware(\app\middleware\RbacMiddleware::class, 'administrator');
 
     // Recipe workflow

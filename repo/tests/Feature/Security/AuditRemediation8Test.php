@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace tests\Feature\Security;
 
 use tests\TestCase;
+use think\facade\Db;
 
 /**
  * Tests for remediation patch issues: ingredient persistence (Issue 2),
@@ -11,6 +12,20 @@ use tests\TestCase;
  */
 class AuditRemediation8Test extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Clear rate-limit records for the analyst user so refresh tests
+        // don't get 429 from previous runs within the same hour window.
+        $analystUser = Db::name('users')->where('username', 'analyst')->find();
+        if ($analystUser) {
+            Db::name('analytics_refresh_requests')
+                ->where('user_id', (int) $analystUser['id'])
+                ->delete();
+        }
+    }
+
     // === Issue 2: Ingredient persistence ===
 
     public function testUpdateVersionPersistsIngredients(): void
@@ -106,7 +121,7 @@ class AuditRemediation8Test extends TestCase
         $this->assertNotNull($jobId, 'Should return job_id');
 
         // Owner reads their own status
-        $sr = $this->authenticatedRequest('GET', "/api/v1/analytics/refresh-status/{$jobId}", $s);
+        $sr = $this->authenticatedRequest('GET', "/api/v1/analytics/refresh-requests/{$jobId}", $s);
         $this->assertEquals(200, $sr['status'], 'Owner should read own refresh status');
     }
 
@@ -127,7 +142,7 @@ class AuditRemediation8Test extends TestCase
         // The test framework has: admin, editor, reviewer, analyst, finance, auditor
         // Only 'analyst' has operations_analyst. So we test with 'editor' who lacks the role entirely.
         $s2 = $this->loginAs('editor');
-        $sr = $this->authenticatedRequest('GET', "/api/v1/analytics/refresh-status/{$jobId}", $s2);
+        $sr = $this->authenticatedRequest('GET', "/api/v1/analytics/refresh-requests/{$jobId}", $s2);
         $this->assertEquals(403, $sr['status'], 'Non-analyst role should be denied refresh status');
     }
 
@@ -144,7 +159,7 @@ class AuditRemediation8Test extends TestCase
 
         // Admin reads the analyst's refresh status
         $admin = $this->loginAs('admin');
-        $sr = $this->authenticatedRequest('GET', "/api/v1/analytics/refresh-status/{$jobId}", $admin);
+        $sr = $this->authenticatedRequest('GET', "/api/v1/analytics/refresh-requests/{$jobId}", $admin);
         $this->assertEquals(200, $sr['status'], 'Admin should read any refresh status');
     }
 
