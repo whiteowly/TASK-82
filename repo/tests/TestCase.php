@@ -52,7 +52,7 @@ abstract class TestCase extends BaseTestCase
     {
         $password = bootstrap_config('seed_admin_password', '');
 
-        $responseHeaders = '';
+        $cookies = [];
         $ch = curl_init('http://127.0.0.1:8080/api/v1/auth/login');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
@@ -65,9 +65,14 @@ abstract class TestCase extends BaseTestCase
             'Content-Type: application/json',
             'Accept: application/json',
         ]);
-        // Capture response headers to extract Set-Cookie
-        curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($ch, $header) use (&$responseHeaders) {
-            $responseHeaders .= $header;
+        // Capture every Set-Cookie header individually
+        curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($ch, $header) use (&$cookies) {
+            if (stripos($header, 'Set-Cookie:') === 0) {
+                // Extract "name=value" before the first semicolon
+                $value = trim(substr($header, strlen('Set-Cookie:')));
+                $pair = explode(';', $value, 2)[0];
+                $cookies[] = trim($pair);
+            }
             return strlen($header);
         });
 
@@ -75,16 +80,13 @@ abstract class TestCase extends BaseTestCase
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        // Extract session cookie from Set-Cookie header
-        $cookie = '';
-        if (preg_match('/Set-Cookie:\s*([^;]+)/i', $responseHeaders, $m)) {
-            $cookie = $m[1]; // e.g. "PHPSESSID=abc123"
-        }
+        // Join all cookies for the Cookie header
+        $cookie = implode('; ', $cookies);
 
         $body = json_decode($response ?: '', true) ?? [];
 
         return [
-            'cookie_file' => '', // kept for backward compat with doUpload methods
+            'cookie_file' => '',
             'cookie'      => $cookie,
             'csrf_token'  => $body['data']['csrf_token'] ?? '',
             'user'        => $body['data']['user'] ?? [],
