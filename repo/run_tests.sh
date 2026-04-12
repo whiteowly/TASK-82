@@ -200,10 +200,7 @@ ADMIN_PASS_PW=$(docker compose exec -T web php -r "require '/app/vendor/autoload
 echo "$ADMIN_PASS_PW" > /tmp/siteops_test_password
 
 PW_EXIT=1
-if command -v npx >/dev/null 2>&1 && [ -d node_modules/@playwright ]; then
-    PW_EXIT=0
-    timeout "$PLAYWRIGHT_TIMEOUT" npx playwright test --reporter=list 2>&1 || PW_EXIT=$?
-elif [ -f Dockerfile.playwright ]; then
+if [ -f Dockerfile.playwright ]; then
     echo "  Building Playwright Docker image..."
     docker build -f Dockerfile.playwright -t siteops-playwright . 2>&1
     echo "  Running Playwright tests (timeout: ${PLAYWRIGHT_TIMEOUT}s)..."
