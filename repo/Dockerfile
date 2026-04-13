@@ -27,8 +27,8 @@ RUN composer install --optimize-autoloader --no-scripts --ignore-platform-reqs 2
 ##
 FROM php:8.1-fpm-alpine
 
-RUN apk add --no-cache nginx curl bash openssl curl-dev \
-    && docker-php-ext-install pdo_mysql bcmath opcache curl \
+RUN apk add --no-cache nginx curl bash openssl curl-dev oniguruma-dev \
+    && docker-php-ext-install pdo_mysql bcmath opcache curl mbstring \
     && apk add --no-cache freetype-dev libjpeg-turbo-dev libpng-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install gd \
@@ -50,7 +50,6 @@ COPY . /app
 
 # Ensure runtime dirs exist and register services
 RUN mkdir -p /app/runtime/cache /app/runtime/log /app/runtime/session /app/runtime/temp \
-    && php /app/vendor/bin/composer dump-autoload --optimize --working-dir=/app 2>/dev/null || true \
     && php /app/think service:discover 2>/dev/null || true \
     && chown -R www-data:www-data /app/runtime /app/storage \
     && chmod +x /app/docker/entrypoint.sh /app/docker/init-db-internal.sh

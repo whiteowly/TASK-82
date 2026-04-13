@@ -49,7 +49,7 @@ abstract class TestCase extends BaseTestCase
      * instead of relying on curl cookie jar files.
      *
      * @param string $username One of: admin, editor, reviewer, analyst, finance, auditor
-     * @return array{cookie_file: string, cookie: string, csrf_token: string, user: array}
+     * @return array{cookie_file: string, cookie: string, csrf_token: string, access_token: string, user: array}
      */
     protected function loginAs(string $username): array
     {
@@ -59,6 +59,7 @@ abstract class TestCase extends BaseTestCase
             'cookie_file' => '',
             'cookie'      => '',
             'csrf_token'  => '',
+            'access_token'=> '',
             'user'        => [],
             'status'      => 0,
             'raw'         => '',
@@ -98,12 +99,13 @@ abstract class TestCase extends BaseTestCase
                 'cookie_file' => '',
                 'cookie'      => $cookie,
                 'csrf_token'  => $body['data']['csrf_token'] ?? '',
+                'access_token'=> $body['data']['access_token'] ?? '',
                 'user'        => $body['data']['user'] ?? [],
                 'status'      => $httpCode,
                 'raw'         => $response ?: '',
             ];
 
-            if ($httpCode === 200 && $cookie !== '' && $lastResult['csrf_token'] !== '') {
+            if ($httpCode === 200 && $lastResult['access_token'] !== '') {
                 return $lastResult;
             }
 
@@ -113,12 +115,13 @@ abstract class TestCase extends BaseTestCase
         }
 
         throw new \RuntimeException(sprintf(
-            'loginAs(%s) failed after %d attempt(s): status=%d cookie_present=%s csrf_present=%s raw=%s',
+            'loginAs(%s) failed after %d attempt(s): status=%d cookie_present=%s csrf_present=%s token_present=%s raw=%s',
             $username,
             self::LOGIN_RETRIES,
             (int) $lastResult['status'],
             $lastResult['cookie'] !== '' ? 'yes' : 'no',
             $lastResult['csrf_token'] !== '' ? 'yes' : 'no',
+            $lastResult['access_token'] !== '' ? 'yes' : 'no',
             (string) $lastResult['raw']
         ));
     }
@@ -140,6 +143,9 @@ abstract class TestCase extends BaseTestCase
         $headers = ['Content-Type: application/json', 'Accept: application/json'];
         if (!empty($session['cookie'])) {
             $headers[] = 'Cookie: ' . $session['cookie'];
+        }
+        if (!empty($session['access_token'])) {
+            $headers[] = 'Authorization: Bearer ' . $session['access_token'];
         }
         if (!empty($session['csrf_token'])) {
             $headers[] = 'X-CSRF-Token: ' . $session['csrf_token'];

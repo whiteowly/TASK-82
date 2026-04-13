@@ -12,8 +12,8 @@ RUN composer install --no-dev --optimize-autoloader --no-scripts --ignore-platfo
 ##
 FROM php:8.1-cli-alpine
 
-RUN apk add --no-cache bash curl openssl \
-    && docker-php-ext-install pdo_mysql bcmath opcache \
+RUN apk add --no-cache bash curl openssl oniguruma-dev \
+    && docker-php-ext-install pdo_mysql bcmath opcache mbstring \
     && apk add --no-cache freetype-dev libjpeg-turbo-dev libpng-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install gd \

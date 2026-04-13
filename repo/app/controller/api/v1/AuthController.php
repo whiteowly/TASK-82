@@ -5,6 +5,7 @@ namespace app\controller\api\v1;
 
 use app\controller\BaseController;
 use app\service\auth\AuthService;
+use app\service\auth\SessionTokenService;
 use think\Response;
 
 class AuthController extends BaseController
@@ -40,6 +41,11 @@ class AuthController extends BaseController
         // Generate CSRF token for session
         $csrfToken = bin2hex(random_bytes(32));
         session('csrf_token', $csrfToken);
+        $accessToken = SessionTokenService::issue(
+            (int) $user['id'],
+            $rolesAndScopes['roles'],
+            $rolesAndScopes['site_scopes']
+        );
 
         return $this->success([
             'user' => [
@@ -50,6 +56,7 @@ class AuthController extends BaseController
                 'site_scopes'  => $rolesAndScopes['site_scopes'],
             ],
             'csrf_token' => $csrfToken,
+            'access_token' => $accessToken,
         ]);
     }
 

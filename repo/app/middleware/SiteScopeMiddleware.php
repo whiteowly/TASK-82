@@ -32,7 +32,9 @@ class SiteScopeMiddleware
         if ($hasCrossSite) {
             $request->siteScopes = []; // empty = all sites
         } else {
-            $siteScopes = session('user_site_scopes') ?: [];
+            $siteScopes = is_array($request->tokenSiteScopes ?? null)
+                ? $request->tokenSiteScopes
+                : (session('user_site_scopes') ?: []);
             $request->siteScopes = $siteScopes;
 
             if (empty($siteScopes)) {
