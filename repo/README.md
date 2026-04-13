@@ -45,6 +45,8 @@ No `.env` files are used. A dev-bootstrap script automatically generates local-d
 
 All services use Docker host networking (`network_mode: host`) so the app is directly reachable at `http://127.0.0.1:8080`. MySQL binds to `127.0.0.1` only (`--bind-address=127.0.0.1`) and is not exposed beyond the loopback interface.
 
+Session auth is cookie-based and server-side. For non-local deployments, either run a single `web` instance or use sticky sessions/shared session storage across replicas; otherwise authenticated requests can intermittently return `401 AUTH_REQUIRED`.
+
 ## Module Boundaries
 
 The application is a modular monolith with these domain modules:
