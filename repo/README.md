@@ -1,5 +1,7 @@
 # Community Commerce & Content Operations Management System
 
+**Project Type: fullstack**
+
 A fully offline, local-network multi-site management system built with ThinkPHP 6 + Layui. Designed for community commerce organizations that need recipe content workflow, operations analytics, multi-dimensional reporting, finance settlement management, RBAC, encrypted sensitive data handling, and immutable audit logging.
 
 **This system does not depend on internet access, cloud storage, or external SaaS services.**
@@ -7,7 +9,10 @@ A fully offline, local-network multi-site management system built with ThinkPHP 
 ## Quick Start
 
 ```bash
-# Start the full stack (builds images, starts all services)
+# Required startup command (backend/fullstack gate)
+docker-compose up
+
+# Recommended command for first run (build images + start all services)
 docker compose up --build
 
 # Access the application
@@ -108,6 +113,7 @@ Site is a first-class organizational dimension. All operational queries enforce 
 | Command | Purpose |
 |---------|---------|
 | `docker compose up --build` | Primary runtime command — builds and starts all services |
+| `docker-compose up` | Required compatibility startup command (same stack startup intent) |
 | `docker compose down` | Stop and remove containers |
 | `./run_tests.sh` | Primary broad test command — runs health checks, PHPUnit, error envelope verification through Docker |
 | `./init_db.sh` | Standard database initialization — runs migrations and seeds through Docker |
@@ -180,10 +186,12 @@ The broad test command runs PHPUnit backend tests inside Docker, plus Playwright
 ### Running Playwright separately (for development)
 
 ```bash
-# Requires: Node 18+, stack running via docker compose up --build
-npm install
-npx playwright install chromium
-npx playwright test
+# Docker-only Playwright run (no host runtime install)
+docker build -f Dockerfile.playwright -t siteops-playwright .
+docker run --rm --network host \
+  -v "$(pwd)/tests/Playwright/artifacts:/tests/tests/Playwright/artifacts" \
+  siteops-playwright \
+  sh -c "npx playwright test --reporter=list"
 ```
 
 Playwright tests covering the major role-based UI flows with screenshot evidence saved to `tests/Playwright/artifacts/`.
@@ -226,7 +234,56 @@ By default, `./init_db.sh` seeds representative demo data so the system is immed
 | Audit Logs | 10 entries covering login, permissions, recipe workflow, settlements |
 | Metrics | 30 daily snapshots across 5 metric types |
 
-All seeded users use the same password (printed in bootstrap logs on first start). To log in, check the bootstrap output or read the `seed_admin_password` from the bootstrap volume.
+## Access Method
+
+- Web UI: `http://127.0.0.1:8080`
+- Health endpoint: `http://127.0.0.1:8080/api/v1/health`
+- MySQL (loopback only): `127.0.0.1:3307`
+
+## Verification Method
+
+After startup, verify the system with both API and UI checks:
+
+```bash
+# 1) API health check
+curl -s http://127.0.0.1:8080/api/v1/health
+
+# 2) API auth check (expect 401 for invalid credentials)
+curl -s -o /dev/null -w "%{http_code}\n" \
+  -X POST http://127.0.0.1:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"invalid","password":"invalid"}'
+
+# 3) Full automated verification
+./run_tests.sh
+```
+
+UI verification flow:
+1. Open `http://127.0.0.1:8080/login`
+2. Log in with one of the demo users in the table below
+3. Confirm redirect to `/dashboard`
+4. Open `/recipes/editor` and `/analytics` to confirm authenticated pages render
+
+## Demo Credentials (Authentication Required)
+
+Authentication is required. Seeded users are role-based and all use the same password value from `seed_admin_password`.
+
+Get demo password:
+
+```bash
+docker compose exec -T web php -r "require '/app/vendor/autoload.php'; echo bootstrap_config('seed_admin_password', '');"
+```
+
+Use that returned value as the password for every demo user below.
+
+| Role | Username | Email | Password |
+|------|----------|-------|----------|
+| administrator | `admin` | `admin@example.local` | value of `seed_admin_password` |
+| content_editor | `editor` | `editor@example.local` | value of `seed_admin_password` |
+| reviewer | `reviewer` | `reviewer@example.local` | value of `seed_admin_password` |
+| operations_analyst | `analyst` | `analyst@example.local` | value of `seed_admin_password` |
+| finance_clerk | `finance` | `finance@example.local` | value of `seed_admin_password` |
+| auditor | `auditor` | `auditor@example.local` | value of `seed_admin_password` |
 
 ## Current Status
 
