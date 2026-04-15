@@ -47,8 +47,9 @@ Route::group('api/v1', function () {
     });
 
     // Internal published catalog
-    Route::get('catalog/recipes', 'api.v1.Catalog/index');
+    // Register param route first to avoid prefix-capture ambiguity.
     Route::get('catalog/recipes/:id', 'api.v1.Catalog/read');
+    Route::get('catalog/recipes', 'api.v1.Catalog/index');
 
     // File uploads
     Route::post('files/images', 'api.v1.File/uploadImage');
@@ -83,14 +84,15 @@ Route::group('api/v1', function () {
         Route::get('freight-rules', 'api.v1.Settlement/listFreightRules');
         Route::patch('freight-rules/:id', 'api.v1.Settlement/updateFreightRule');
         Route::post('settlements/generate', 'api.v1.Settlement/generate');
-        Route::get('settlements/:id', 'api.v1.Settlement/read');
-        Route::get('settlements', 'api.v1.Settlement/listStatements');
+        // Register specific subpaths before generic :id reads.
         Route::post('settlements/:id/reconcile', 'api.v1.Settlement/reconcile');
         Route::post('settlements/:id/submit', 'api.v1.Settlement/submit');
         Route::post('settlements/:id/approve-final', 'api.v1.Settlement/approveFinal')
             ->middleware(\app\middleware\RbacMiddleware::class, 'administrator');
         Route::post('settlements/:id/reverse', 'api.v1.Settlement/reverse');
         Route::get('settlements/:id/audit-trail', 'api.v1.Settlement/auditTrail');
+        Route::get('settlements/:id', 'api.v1.Settlement/read');
+        Route::get('settlements', 'api.v1.Settlement/listStatements');
     });
 
     // Audit

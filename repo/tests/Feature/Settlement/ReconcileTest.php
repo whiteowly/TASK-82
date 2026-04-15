@@ -56,8 +56,20 @@ class ReconcileTest extends TestCase
             $this->financeSession,
             [
                 'notes' => [
-                    ['line' => 'sales',   'note' => 'Verified against POS export'],
-                    ['line' => 'freight', 'note' => 'Matches carrier invoice'],
+                    [
+                        'field_name'     => 'sales_total',
+                        'expected_value' => '1000.00',
+                        'actual_value'   => '1000.00',
+                        'notes'          => 'Verified against POS export',
+                        'resolved'       => true,
+                    ],
+                    [
+                        'field_name'     => 'freight_total',
+                        'expected_value' => '120.00',
+                        'actual_value'   => '120.00',
+                        'notes'          => 'Matches carrier invoice',
+                        'resolved'       => true,
+                    ],
                 ],
             ]
         );
