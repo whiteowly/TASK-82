@@ -29,7 +29,7 @@ DB_USER="app_$(head -c 4 /dev/urandom | od -An -tx1 | tr -d ' \n' | head -c 8)"
 APP_KEY=$(head -c 48 /dev/urandom | od -An -tx1 | tr -d ' \n' | head -c 64)
 TAX_ID_KEY=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n' | head -c 64)
 CSRF_SECRET=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n' | head -c 48)
-SEED_ADMIN_PASS=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n' | head -c 24)
+SEED_ADMIN_PASS="AdminTest123!"
 
 # Write individual secret files
 printf '%s' "$DB_ROOT_PASS" > "$BOOTSTRAP_DIR/db_root_password"
